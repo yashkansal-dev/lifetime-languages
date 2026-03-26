@@ -57,7 +57,7 @@ export default async function handler(req, res) {
 
     // Title
     ctx.fillStyle = "#fff";
-    ctx.font = "bold 28px Arial";
+    ctx.font = "bold 28px sans-serif";
     ctx.fillText("Tech Stack Analytics", 40, 50);
 
     // ----------- ROUNDED VERTICAL BARS -----------
