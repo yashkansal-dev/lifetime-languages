@@ -1,10 +1,15 @@
 import axios from "axios";
-import { createCanvas } from "canvas";
+import { existsSync } from "fs";
+import path from "path";
 import { createCanvas, registerFont } from "canvas";
 
-registerFont(process.cwd() + "/fonts/Inter-Regular.ttf", {
-  family: "Inter"
-});
+const fontPath = path.join(process.cwd(), "fonts", "Inter_18pt-Regular.ttf");
+
+if (existsSync(fontPath)) {
+  registerFont(fontPath, {
+    family: "Inter"
+  });
+}
 
 const COLORS = {
   JavaScript: "#f1e05a",
