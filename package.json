@@ -1,0 +1,26 @@
+{
+  "name": "lifetime-languages",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yashkansal-dev/lifetime-languages.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "module",
+  "bugs": {
+    "url": "https://github.com/yashkansal-dev/lifetime-languages/issues"
+  },
+  "homepage": "https://github.com/yashkansal-dev/lifetime-languages#readme",
+  "dependencies": {
+    "axios": "^1.13.6",
+    "canvas": "^3.2.2",
+    "chartjs-node-canvas": "^5.0.0"
+  }
+}
