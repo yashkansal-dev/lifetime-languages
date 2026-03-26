@@ -1,5 +1,10 @@
 import axios from "axios";
 import { createCanvas } from "canvas";
+import { createCanvas, registerFont } from "canvas";
+
+registerFont(process.cwd() + "/fonts/Inter-Regular.ttf", {
+  family: "Inter"
+});
 
 const COLORS = {
   JavaScript: "#f1e05a",
@@ -57,7 +62,7 @@ export default async function handler(req, res) {
 
     // Title
     ctx.fillStyle = "#fff";
-    ctx.font = "bold 28px sans-serif";
+    ctx.font = "20px Inter";
     ctx.fillText("Tech Stack Analytics", 40, 50);
 
     // ----------- ROUNDED VERTICAL BARS -----------
@@ -83,7 +88,7 @@ export default async function handler(req, res) {
 
       // % text
       ctx.fillStyle = "#fff";
-      ctx.font = "14px Arial";
+      ctx.font = "14px Inter";
       ctx.fillText(item.percent.toFixed(1) + "%", x, baseY - heightScale - 10);
 
       // label
@@ -128,7 +133,7 @@ export default async function handler(req, res) {
 
       // text
       ctx.fillStyle = "#c9d1d9";
-      ctx.font = "14px Arial";
+      ctx.font = "14px Inter";
       ctx.fillText(
         `${item.lang}`,
         legendX + 12,
