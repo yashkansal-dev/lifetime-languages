@@ -14,7 +14,7 @@ if (existsSync(fontPath)) {
 const COLORS = {
   JavaScript: "#f1e05a",
   TypeScript: "#3178c6",
-  Python: "#3572A5",
+  Python: "#39ff14",
   Java: "#b07219",
   Kotlin: "#A97BFF",
   Swift: "#ffac45",
@@ -50,10 +50,26 @@ export default async function handler(req, res) {
 
     const total = sorted.reduce((sum, item) => sum + item[1], 0);
 
-    const data = sorted.map(([lang, value]) => ({
+    const rawData = sorted.map(([lang, value]) => ({
       lang,
-      percent: (value / total) * 100
+      percent: total > 0 ? (value / total) * 100 : 0
     }));
+
+    const normalizedTotal = rawData.reduce((sum, item) => sum + item.percent, 0);
+    const data = rawData.map((item, index) => {
+      if (normalizedTotal === 0) {
+        return { ...item, percent: 0 };
+      }
+
+      if (index === rawData.length - 1) {
+        const used = rawData
+          .slice(0, index)
+          .reduce((sum, d) => sum + (d.percent / normalizedTotal) * 100, 0);
+        return { ...item, percent: Math.max(0, 100 - used) };
+      }
+
+      return { ...item, percent: (item.percent / normalizedTotal) * 100 };
+    });
 
     // 🎨 Canvas
     const width = 900;
@@ -105,13 +121,16 @@ export default async function handler(req, res) {
 
     // ----------- STACKED BAR -----------
 
-    let stackX = 60;
+    const stackLeft = 60;
+    let stackX = stackLeft;
     const stackY = 380;
-    const stackWidth = 780;
+    const stackWidth = width - (stackLeft * 2);
 
-    data.forEach(item => {
+    data.forEach((item, index) => {
       const color = COLORS[item.lang] || COLORS.default;
-      const widthPart = (item.percent / 100) * stackWidth;
+      const widthPart = index === data.length - 1
+        ? (stackLeft + stackWidth) - stackX
+        : (item.percent / 100) * stackWidth;
 
       ctx.fillStyle = color;
       ctx.fillRect(stackX, stackY, widthPart, 20);
@@ -120,7 +139,7 @@ export default async function handler(req, res) {
     });
 
     ctx.strokeStyle = "#30363d";
-    ctx.strokeRect(60, stackY, stackWidth, 20);
+    ctx.strokeRect(stackLeft, stackY, stackWidth, 20);
 
     // ----------- LEGEND -----------
 
