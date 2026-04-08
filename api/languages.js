@@ -23,6 +23,9 @@ const COLORS = {
   default: "#58a6ff"
 };
 
+const STACK_MIN_VISUAL_WIDTH = 3;
+const OTHERS_COLOR = "#f21aca";
+
 export default async function handler(req, res) {
   try {
     const token = process.env.GITHUB_TOKEN;
@@ -132,7 +135,7 @@ export default async function handler(req, res) {
 
     stackSegments.forEach(segment => {
       const color = segment.lang === "Others"
-        ? "rgba(110, 118, 129, 0.55)"
+        ? OTHERS_COLOR
         : (COLORS[segment.lang] || COLORS.default);
 
       drawSegmentRect(
@@ -160,7 +163,7 @@ export default async function handler(req, res) {
 
     data.forEach(item => {
       const color = item.lang === "Others"
-        ? "rgba(110, 118, 129, 0.55)"
+        ? OTHERS_COLOR
         : (COLORS[item.lang] || COLORS.default);
 
       // dot
@@ -172,11 +175,9 @@ export default async function handler(req, res) {
       // text
       ctx.fillStyle = "#c9d1d9";
       ctx.font = "14px Inter";
-      ctx.fillText(
-        `${item.lang}`,
-        legendX + 12,
-        legendY + 4
-      );
+      ctx.textBaseline = "middle";
+      ctx.fillText(`${item.lang}`, legendX + 12, legendY);
+      ctx.textBaseline = "alphabetic";
 
       legendX += 130;
       if (legendX > 750) {
@@ -217,25 +218,95 @@ function buildStackSegments(data, stackWidth) {
     return [{ lang: "Others", width: stackWidth, isFirst: true, isLast: true }];
   }
 
-  let previousBoundary = 0;
-  let accumulatedPercent = 0;
+  const exactWidths = data.map(item => (item.percent / totalPercent) * stackWidth);
+  const lastIndex = data.length - 1;
+  const lastDesiredWidth = Math.max(
+    data[lastIndex].percent > 0 ? STACK_MIN_VISUAL_WIDTH : 0,
+    Math.round(exactWidths[lastIndex])
+  );
+
+  const previousData = data.slice(0, lastIndex);
+  const previousExactWidths = exactWidths.slice(0, lastIndex);
+  const previousSegments = allocateSegmentWidths(previousData, previousExactWidths, stackWidth - lastDesiredWidth);
+
+  return [
+    ...previousSegments.map((segment, index) => ({
+      lang: segment.lang,
+      width: segment.width,
+      isFirst: index === 0,
+      isLast: false
+    })),
+    {
+      lang: data[lastIndex].lang,
+      width: Math.max(0, stackWidth - previousSegments.reduce((sum, segment) => sum + segment.width, 0)),
+      isFirst: data.length === 1,
+      isLast: true
+    }
+  ];
+}
+
+function allocateSegmentWidths(data, exactWidths, totalWidth) {
+  if (data.length === 0 || totalWidth <= 0) {
+    return [];
+  }
+
+  const locked = exactWidths.map(width => width > 0 && width < STACK_MIN_VISUAL_WIDTH);
+  const lockedTotal = locked.reduce((sum, isLocked) => sum + (isLocked ? STACK_MIN_VISUAL_WIDTH : 0), 0);
+  const flexibleTotal = exactWidths.reduce((sum, width, index) => sum + (locked[index] ? 0 : width), 0);
+
+  if (lockedTotal > totalWidth || flexibleTotal <= 0) {
+    const baseWidth = totalWidth / data.length;
+    let usedWidth = 0;
+
+    return data.map((item, index) => {
+      const isLast = index === data.length - 1;
+      const width = isLast
+        ? Math.max(0, totalWidth - usedWidth)
+        : Math.max(0, Math.round(baseWidth));
+
+      usedWidth += width;
+
+      return { lang: item.lang, width };
+    });
+  }
+
+  const targetWidths = exactWidths.map((width, index) => {
+    if (locked[index]) {
+      return STACK_MIN_VISUAL_WIDTH;
+    }
+
+    return (width / flexibleTotal) * (totalWidth - lockedTotal);
+  });
+
+  const floorWidths = targetWidths.map(width => Math.floor(width));
+  let remaining = totalWidth - floorWidths.reduce((sum, width) => sum + width, 0);
+
+  const fractions = targetWidths.map((width, index) => ({
+    index,
+    fraction: width - floorWidths[index]
+  }))
+    .sort((a, b) => b.fraction - a.fraction);
+
+  for (const entry of fractions) {
+    if (remaining <= 0) {
+      break;
+    }
+
+    floorWidths[entry.index] += 1;
+    remaining -= 1;
+  }
+
+  let usedWidth = 0;
 
   return data.map((item, index) => {
-    accumulatedPercent += item.percent;
     const isLast = index === data.length - 1;
-    const boundary = isLast
-      ? stackWidth
-      : Math.round((accumulatedPercent / totalPercent) * stackWidth);
+    const width = isLast
+      ? Math.max(0, totalWidth - usedWidth)
+      : floorWidths[index];
 
-    const width = Math.max(0, boundary - previousBoundary);
-    previousBoundary = boundary;
+    usedWidth += width;
 
-    return {
-      lang: item.lang,
-      width,
-      isFirst: index === 0,
-      isLast
-    };
+    return { lang: item.lang, width };
   });
 }
 
