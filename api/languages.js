@@ -44,32 +44,34 @@ export default async function handler(req, res) {
       }
     }
 
-    const sorted = Object.entries(languageData)
+    const total = Object.values(languageData).reduce((sum, value) => sum + value, 0);
+    const topLanguages = Object.entries(languageData)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 6);
 
-    const total = sorted.reduce((sum, item) => sum + item[1], 0);
-
-    const rawData = sorted.map(([lang, value]) => ({
+    const rawData = topLanguages.map(([lang, value]) => ({
       lang,
+      value,
       percent: total > 0 ? (value / total) * 100 : 0
     }));
 
-    const normalizedTotal = rawData.reduce((sum, item) => sum + item.percent, 0);
-    const data = rawData.map((item, index) => {
-      if (normalizedTotal === 0) {
-        return { ...item, percent: 0 };
-      }
+    const rawTotal = rawData.reduce((sum, item) => sum + item.percent, 0);
+    const baseData = rawTotal < 100 && total > 0
+      ? [...rawData, { lang: "Others", percent: 100 - rawTotal }]
+      : rawData;
 
-      if (index === rawData.length - 1) {
-        const used = rawData
-          .slice(0, index)
-          .reduce((sum, d) => sum + (d.percent / normalizedTotal) * 100, 0);
-        return { ...item, percent: Math.max(0, 100 - used) };
-      }
+    const normalizedData = rawTotal > 100 && rawTotal > 0
+      ? baseData.map(item => ({
+          ...item,
+          percent: (item.percent / rawTotal) * 100
+        }))
+      : baseData;
 
-      return { ...item, percent: (item.percent / normalizedTotal) * 100 };
-    });
+    const data = normalizedData.map((item, index) => ({
+      ...item,
+      isFirst: index === 0,
+      isLast: index === normalizedData.length - 1
+    }));
 
     // 🎨 Canvas
     const width = 900;
@@ -122,20 +124,30 @@ export default async function handler(req, res) {
     // ----------- STACKED BAR -----------
 
     const stackLeft = 60;
-    let stackX = stackLeft;
     const stackY = 380;
     const stackWidth = width - (stackLeft * 2);
 
-    data.forEach((item, index) => {
-      const color = COLORS[item.lang] || COLORS.default;
-      const widthPart = index === data.length - 1
-        ? (stackLeft + stackWidth) - stackX
-        : (item.percent / 100) * stackWidth;
+    const stackSegments = buildStackSegments(data, stackWidth);
+    let stackX = stackLeft;
 
-      ctx.fillStyle = color;
-      ctx.fillRect(stackX, stackY, widthPart, 20);
+    stackSegments.forEach(segment => {
+      const color = segment.lang === "Others"
+        ? "rgba(110, 118, 129, 0.55)"
+        : (COLORS[segment.lang] || COLORS.default);
 
-      stackX += widthPart;
+      drawSegmentRect(
+        ctx,
+        stackX,
+        stackY,
+        segment.width,
+        20,
+        10,
+        color,
+        segment.isFirst,
+        segment.isLast
+      );
+
+      stackX += segment.width;
     });
 
     ctx.strokeStyle = "#30363d";
@@ -147,7 +159,9 @@ export default async function handler(req, res) {
     let legendY = 430;
 
     data.forEach(item => {
-      const color = COLORS[item.lang] || COLORS.default;
+      const color = item.lang === "Others"
+        ? "rgba(110, 118, 129, 0.55)"
+        : (COLORS[item.lang] || COLORS.default);
 
       // dot
       ctx.beginPath();
@@ -192,6 +206,74 @@ function drawRoundedRect(ctx, x, y, width, height, radius, color) {
   ctx.lineTo(x, y + height);
   ctx.lineTo(x, y + radius);
   ctx.quadraticCurveTo(x, y, x + radius, y);
+  ctx.closePath();
+  ctx.fill();
+}
+
+function buildStackSegments(data, stackWidth) {
+  const totalPercent = data.reduce((sum, item) => sum + item.percent, 0);
+
+  if (data.length === 0 || stackWidth <= 0 || totalPercent <= 0) {
+    return [{ lang: "Others", width: stackWidth, isFirst: true, isLast: true }];
+  }
+
+  let previousBoundary = 0;
+  let accumulatedPercent = 0;
+
+  return data.map((item, index) => {
+    accumulatedPercent += item.percent;
+    const isLast = index === data.length - 1;
+    const boundary = isLast
+      ? stackWidth
+      : Math.round((accumulatedPercent / totalPercent) * stackWidth);
+
+    const width = Math.max(0, boundary - previousBoundary);
+    previousBoundary = boundary;
+
+    return {
+      lang: item.lang,
+      width,
+      isFirst: index === 0,
+      isLast
+    };
+  });
+}
+
+function drawSegmentRect(ctx, x, y, width, height, radius, color, isFirst, isLast) {
+  const safeRadius = Math.min(radius, height / 2, width / 2);
+
+  ctx.fillStyle = color;
+  ctx.beginPath();
+
+  if (isFirst && isLast) {
+    ctx.moveTo(x + safeRadius, y);
+    ctx.lineTo(x + width - safeRadius, y);
+    ctx.quadraticCurveTo(x + width, y, x + width, y + safeRadius);
+    ctx.lineTo(x + width, y + height - safeRadius);
+    ctx.quadraticCurveTo(x + width, y + height, x + width - safeRadius, y + height);
+    ctx.lineTo(x + safeRadius, y + height);
+    ctx.quadraticCurveTo(x, y + height, x, y + height - safeRadius);
+    ctx.lineTo(x, y + safeRadius);
+    ctx.quadraticCurveTo(x, y, x + safeRadius, y);
+  } else if (isFirst) {
+    ctx.moveTo(x + safeRadius, y);
+    ctx.lineTo(x + width, y);
+    ctx.lineTo(x + width, y + height);
+    ctx.lineTo(x + safeRadius, y + height);
+    ctx.quadraticCurveTo(x, y + height, x, y + height - safeRadius);
+    ctx.lineTo(x, y + safeRadius);
+    ctx.quadraticCurveTo(x, y, x + safeRadius, y);
+  } else if (isLast) {
+    ctx.moveTo(x, y);
+    ctx.lineTo(x + width - safeRadius, y);
+    ctx.quadraticCurveTo(x + width, y, x + width, y + safeRadius);
+    ctx.lineTo(x + width, y + height - safeRadius);
+    ctx.quadraticCurveTo(x + width, y + height, x + width - safeRadius, y + height);
+    ctx.lineTo(x, y + height);
+  } else {
+    ctx.rect(x, y, width, height);
+  }
+
   ctx.closePath();
   ctx.fill();
 }
