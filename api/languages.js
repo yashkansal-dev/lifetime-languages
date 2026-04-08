@@ -24,7 +24,7 @@ const COLORS = {
 };
 
 const STACK_MIN_VISUAL_WIDTH = 3;
-const OTHERS_COLOR = "#f21aca";
+const OTHERS_COLOR = "#00e1ff";
 
 export default async function handler(req, res) {
   try {
