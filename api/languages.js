@@ -27,6 +27,18 @@ const STACK_MIN_VISUAL_WIDTH = 3;
 const OTHERS_COLOR = "#00e1ff";
 
 export default async function handler(req, res) {
+  // Add CORS headers to allow requests from GitHub and other origins
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.setHeader("Cache-Control", "public, max-age=3600");
+  
+  // Handle preflight requests
+  if (req.method === "OPTIONS") {
+    res.status(200).end();
+    return;
+  }
+
   try {
     const token = process.env.GITHUB_TOKEN;
 
