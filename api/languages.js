@@ -32,6 +32,7 @@ export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
   res.setHeader("Cache-Control", "public, max-age=3600");
+  res.setHeader("X-Content-Type-Options", "nosniff");
   
   // Handle preflight requests
   if (req.method === "OPTIONS") {
@@ -58,13 +59,27 @@ export default async function handler(req, res) {
     let languageData = {};
 
     for (let repo of repoRes.data) {
-      const langRes = await axios.get(repo.languages_url, {
-        headers: { Authorization: `token ${token}` }
-      });
+      try {
+        const langRes = await axios.get(repo.languages_url, {
+          headers: { Authorization: `token ${token}` }
+        });
 
-      for (let lang in langRes.data) {
-        languageData[lang] = (languageData[lang] || 0) + langRes.data[lang];
+        for (let lang in langRes.data) {
+          languageData[lang] = (languageData[lang] || 0) + langRes.data[lang];
+        }
+      } catch (repoErr) {
+        // Skip repos that fail language fetch
+        console.error(`Failed to fetch languages for ${repo.name}:`, repoErr.message);
       }
+    }
+
+    // Fallback if no language data found
+    if (Object.keys(languageData).length === 0) {
+      const placeholderImg = createErrorImage("No language data available");
+      res.setHeader("Content-Type", "image/png");
+      res.setHeader("Content-Length", placeholderImg.length);
+      res.end(placeholderImg);
+      return;
     }
 
     const total = Object.values(languageData).reduce((sum, value) => sum + value, 0);
