@@ -41,6 +41,13 @@ export default async function handler(req, res) {
 
   try {
     const token = process.env.GITHUB_TOKEN;
+    
+    if (!token) {
+      const errorImg = createErrorImage("GitHub token not configured");
+      res.setHeader("Content-Type", "image/png");
+      res.send(errorImg);
+      return;
+    }
 
     const repoRes = await axios.get(
       `https://api.github.com/user/repos?per_page=100&type=all`,
@@ -205,8 +212,29 @@ export default async function handler(req, res) {
 
   } catch (err) {
     console.error(err.response?.data || err.message);
-    res.status(500).send("Error generating stats");
+    const errorImg = createErrorImage("Failed to fetch language data");
+    res.setHeader("Content-Type", "image/png");
+    res.send(errorImg);
   }
+}
+
+function createErrorImage(errorMessage) {
+  const canvas = createCanvas(900, 550);
+  const ctx = canvas.getContext("2d");
+  
+  ctx.fillStyle = "#0d1117";
+  ctx.fillRect(0, 0, 900, 550);
+  
+  ctx.fillStyle = "#ff6b6b";
+  ctx.font = "bold 24px Arial";
+  ctx.textAlign = "center";
+  ctx.fillText("⚠️ Error", 450, 200);
+  
+  ctx.fillStyle = "#c9d1d9";
+  ctx.font = "16px Arial";
+  ctx.fillText(errorMessage, 450, 270);
+  
+  return canvas.toBuffer("image/png");
 }
 
 function drawRoundedRect(ctx, x, y, width, height, radius, color) {
