@@ -45,7 +45,8 @@ export default async function handler(req, res) {
     if (!token) {
       const errorImg = createErrorImage("GitHub token not configured");
       res.setHeader("Content-Type", "image/png");
-      res.send(errorImg);
+      res.setHeader("Content-Length", errorImg.length);
+      res.end(errorImg);
       return;
     }
 
@@ -208,13 +209,21 @@ export default async function handler(req, res) {
     const buffer = canvas.toBuffer("image/png");
 
     res.setHeader("Content-Type", "image/png");
-    res.send(buffer);
+    res.setHeader("Content-Length", buffer.length);
+    res.setHeader("Cache-Control", "public, max-age=3600");
+    res.end(buffer);
 
   } catch (err) {
-    console.error(err.response?.data || err.message);
-    const errorImg = createErrorImage("Failed to fetch language data");
-    res.setHeader("Content-Type", "image/png");
-    res.send(errorImg);
+    console.error("Error:", err.response?.data || err.message);
+    try {
+      const errorImg = createErrorImage("Failed to fetch language data");
+      res.setHeader("Content-Type", "image/png");
+      res.setHeader("Content-Length", errorImg.length);
+      res.end(errorImg);
+    } catch (renderErr) {
+      console.error("Error rendering error image:", renderErr.message);
+      res.status(500).send("Error");
+    }
   }
 }
 
