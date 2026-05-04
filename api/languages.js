@@ -26,6 +26,29 @@ const COLORS = {
 const STACK_MIN_VISUAL_WIDTH = 3;
 const OTHERS_COLOR = "#00e1ff";
 
+function getGithubToken() {
+  const candidates = [
+    process.env.GITHUB_TOKEN,
+    process.env.GH_TOKEN,
+    process.env.GITHUB_PAT,
+    process.env.GITHUB_ACCESS_TOKEN
+  ];
+
+  for (const value of candidates) {
+    if (typeof value !== "string") {
+      continue;
+    }
+
+    const cleaned = value.trim();
+
+    if (cleaned && cleaned !== "undefined" && cleaned !== "null") {
+      return cleaned;
+    }
+  }
+
+  return "";
+}
+
 export default async function handler(req, res) {
   // Add CORS headers to allow requests from GitHub and other origins
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -41,7 +64,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const token = process.env.GITHUB_TOKEN;
+    const token = getGithubToken();
     
     if (!token) {
       const errorImg = createErrorImage("GitHub token not configured");
@@ -54,7 +77,7 @@ export default async function handler(req, res) {
     const repoRes = await axios.get(
       `https://api.github.com/user/repos?per_page=100&type=all`,
       { 
-        headers: { Authorization: `token ${token}` },
+        headers: { Authorization: `Bearer ${token}` },
         timeout: 8000
       }
     );
@@ -64,7 +87,7 @@ export default async function handler(req, res) {
     for (let repo of repoRes.data) {
       try {
         const langRes = await axios.get(repo.languages_url, {
-          headers: { Authorization: `token ${token}` },
+          headers: { Authorization: `Bearer ${token}` },
           timeout: 5000
         });
 
