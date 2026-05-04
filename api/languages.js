@@ -54,7 +54,7 @@ export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
-  res.setHeader("Cache-Control", "public, max-age=3600");
+  res.setHeader("Cache-Control", "public, max-age=300, s-maxage=3600, stale-while-revalidate=86400");
   res.setHeader("X-Content-Type-Options", "nosniff");
   
   // Handle preflight requests
@@ -252,7 +252,7 @@ export default async function handler(req, res) {
 
     res.setHeader("Content-Type", "image/png");
     res.setHeader("Content-Length", buffer.length);
-    res.setHeader("Cache-Control", "public, max-age=3600");
+    res.setHeader("Cache-Control", "public, max-age=300, s-maxage=3600, stale-while-revalidate=86400");
     res.end(buffer);
 
   } catch (err) {
