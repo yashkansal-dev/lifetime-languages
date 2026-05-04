@@ -53,7 +53,10 @@ export default async function handler(req, res) {
 
     const repoRes = await axios.get(
       `https://api.github.com/user/repos?per_page=100&type=all`,
-      { headers: { Authorization: `token ${token}` } }
+      { 
+        headers: { Authorization: `token ${token}` },
+        timeout: 8000
+      }
     );
 
     let languageData = {};
@@ -61,7 +64,8 @@ export default async function handler(req, res) {
     for (let repo of repoRes.data) {
       try {
         const langRes = await axios.get(repo.languages_url, {
-          headers: { Authorization: `token ${token}` }
+          headers: { Authorization: `token ${token}` },
+          timeout: 5000
         });
 
         for (let lang in langRes.data) {
